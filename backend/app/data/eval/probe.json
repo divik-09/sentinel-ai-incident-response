@@ -1,0 +1,571 @@
+[
+ {
+  "id": "probe-pgbouncer",
+  "tags": [
+   "probe"
+  ],
+  "service": "api",
+  "severity": "high",
+  "title": "pgbouncer client queue growing",
+  "summary": "Held-out case: pgbouncer client queue growing",
+  "expected_root_cause": "database_connection_pool_exhaustion",
+  "gold_evidence": [
+   1,
+   2,
+   3
+  ],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "api",
+    "payload": {
+     "level": "ERROR",
+     "code": "PGBOUNCER",
+     "message": "no more connections allowed (max_client_conn)",
+     "request_id": "req-pgbounce"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "api",
+    "payload": {
+     "name": "pgbouncer_pools_cl_waiting",
+     "value": 340,
+     "unit": "count",
+     "threshold": 10
+    }
+   },
+   {
+    "kind": "trace",
+    "service": "api",
+    "payload": {
+     "trace_id": "tr-x",
+     "span_id": "sp-x",
+     "operation": "db.query",
+     "duration_ms": 2800,
+     "status": "ERROR",
+     "attributes": {}
+    }
+   }
+  ]
+ },
+ {
+  "id": "probe-jvm-oom",
+  "tags": [
+   "probe"
+  ],
+  "service": "orders",
+  "severity": "high",
+  "title": "JVM heap exhaustion",
+  "summary": "Held-out case: JVM heap exhaustion",
+  "expected_root_cause": "memory_pressure",
+  "gold_evidence": [
+   1,
+   2,
+   3
+  ],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "orders",
+    "payload": {
+     "level": "ERROR",
+     "code": "java.lang.OutOfMemoryError",
+     "message": "Java heap space",
+     "request_id": "req-java.lan"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "orders",
+    "payload": {
+     "name": "jvm_memory_used_bytes",
+     "value": 3800000000.0,
+     "unit": "bytes",
+     "limit": 4000000000.0
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "orders",
+    "payload": {
+     "name": "kube_pod_container_status_restarts_total",
+     "value": 4,
+     "unit": "count",
+     "threshold": 0
+    }
+   }
+  ]
+ },
+ {
+  "id": "probe-node-etimedout",
+  "tags": [
+   "probe"
+  ],
+  "service": "web",
+  "severity": "high",
+  "title": "Slow third-party rates API",
+  "summary": "Held-out case: Slow third-party rates API",
+  "expected_root_cause": "downstream_dependency_latency",
+  "gold_evidence": [
+   1,
+   2,
+   3
+  ],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "web",
+    "payload": {
+     "level": "ERROR",
+     "code": "ETIMEDOUT",
+     "message": "Error: connect ETIMEDOUT 10.0.3.14:443",
+     "request_id": "req-etimedou"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "web",
+    "payload": {
+     "name": "http_client_request_duration_seconds_p95",
+     "value": 8.0,
+     "unit": "s",
+     "threshold": 1.0
+    }
+   },
+   {
+    "kind": "trace",
+    "service": "web",
+    "payload": {
+     "trace_id": "tr-x",
+     "span_id": "sp-x",
+     "operation": "GET /api/rates",
+     "duration_ms": 8000,
+     "status": "ERROR",
+     "attributes": {
+      "http.url": "https://rates.example.com/api/rates"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "probe-redis-stampede",
+  "tags": [
+   "probe"
+  ],
+  "service": "product",
+  "severity": "high",
+  "title": "Product pages slow",
+  "summary": "Held-out case: Product pages slow",
+  "expected_root_cause": "cache_stampede",
+  "gold_evidence": [
+   1,
+   2,
+   3
+  ],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "product",
+    "payload": {
+     "level": "WARN",
+     "code": "REDIS_WARN",
+     "message": "cache stampede detected for key product:123",
+     "request_id": "req-redis_wa"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "product",
+    "payload": {
+     "name": "redis_keyspace_hit_ratio",
+     "value": 0.05,
+     "unit": "ratio",
+     "threshold": 0.8
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "product",
+    "payload": {
+     "name": "postgres_queries_per_second",
+     "value": 3200,
+     "unit": "requests/s",
+     "threshold": 500
+    }
+   }
+  ]
+ },
+ {
+  "id": "probe-rails-undefined-column",
+  "tags": [
+   "probe"
+  ],
+  "service": "accounts",
+  "severity": "high",
+  "title": "Profile page 500s after release",
+  "summary": "Held-out case: Profile page 500s after release",
+  "expected_root_cause": "database_schema_mismatch",
+  "gold_evidence": [
+   1
+  ],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "accounts",
+    "payload": {
+     "level": "ERROR",
+     "code": "ActiveRecord::StatementInvalid",
+     "message": "PG::UndefinedColumn: ERROR: column users.preferences does not exist",
+     "request_id": "req-activere"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "accounts",
+    "payload": {
+     "name": "http_5xx_rate",
+     "value": 0.4,
+     "unit": "ratio",
+     "threshold": 0.02
+    }
+   }
+  ]
+ },
+ {
+  "id": "probe-k8s-oomkilled",
+  "tags": [
+   "probe"
+  ],
+  "service": "worker",
+  "severity": "high",
+  "title": "Workers OOMKilled",
+  "summary": "Held-out case: Workers OOMKilled",
+  "expected_root_cause": "memory_pressure",
+  "gold_evidence": [
+   1,
+   2,
+   3
+  ],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "worker",
+    "payload": {
+     "level": "ERROR",
+     "code": "OOMKilled",
+     "message": "Container was OOMKilled",
+     "request_id": "req-oomkille"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "worker",
+    "payload": {
+     "name": "container_memory_working_set_bytes",
+     "value": 1900000000.0,
+     "unit": "bytes",
+     "limit": 2000000000.0
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "worker",
+    "payload": {
+     "name": "kube_pod_container_status_restarts_total",
+     "value": 7,
+     "unit": "count",
+     "threshold": 0
+    }
+   }
+  ]
+ },
+ {
+  "id": "probe-nginx-upstream",
+  "tags": [
+   "probe"
+  ],
+  "service": "edge",
+  "severity": "high",
+  "title": "502s from upstream",
+  "summary": "Held-out case: 502s from upstream",
+  "expected_root_cause": "downstream_dependency_latency",
+  "gold_evidence": [
+   1,
+   2
+  ],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "edge",
+    "payload": {
+     "level": "ERROR",
+     "code": "NGINX",
+     "message": "upstream timed out (110: Connection timed out) while reading response header from upstream",
+     "request_id": "req-nginx"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "edge",
+    "payload": {
+     "name": "nginx_upstream_response_time_p95",
+     "value": 12.0,
+     "unit": "s",
+     "threshold": 2.0
+    }
+   },
+   {
+    "kind": "trace",
+    "service": "edge",
+    "payload": {
+     "trace_id": "tr-x",
+     "span_id": "sp-x",
+     "operation": "GET /checkout",
+     "duration_ms": 12000,
+     "status": "ERROR",
+     "attributes": {}
+    }
+   }
+  ]
+ },
+ {
+  "id": "probe-sqlalchemy-queuepool",
+  "tags": [
+   "probe"
+  ],
+  "service": "reports",
+  "severity": "high",
+  "title": "Reports hanging",
+  "summary": "Held-out case: Reports hanging",
+  "expected_root_cause": "database_connection_pool_exhaustion",
+  "gold_evidence": [
+   1,
+   2,
+   3
+  ],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "reports",
+    "payload": {
+     "level": "ERROR",
+     "code": "TimeoutError",
+     "message": "QueuePool limit of size 5 overflow 10 reached, connection timed out, timeout 30.00",
+     "request_id": "req-timeoute"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "reports",
+    "payload": {
+     "name": "sqlalchemy_pool_checkedout",
+     "value": 15,
+     "unit": "count",
+     "limit": 15
+    }
+   },
+   {
+    "kind": "trace",
+    "service": "reports",
+    "payload": {
+     "trace_id": "tr-x",
+     "span_id": "sp-x",
+     "operation": "db.session.connect",
+     "duration_ms": 30000,
+     "status": "ERROR",
+     "attributes": {}
+    }
+   }
+  ]
+ },
+ {
+  "id": "probe-node-heap-oom",
+  "tags": [
+   "probe"
+  ],
+  "service": "bff",
+  "severity": "high",
+  "title": "Node BFF crashing",
+  "summary": "Held-out case: Node BFF crashing",
+  "expected_root_cause": "memory_pressure",
+  "gold_evidence": [
+   1,
+   2,
+   3
+  ],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "bff",
+    "payload": {
+     "level": "FATAL",
+     "code": "FATAL",
+     "message": "FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory",
+     "request_id": "req-fatal"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "bff",
+    "payload": {
+     "name": "process_resident_memory_bytes",
+     "value": 1900000000.0,
+     "unit": "bytes",
+     "limit": 2000000000.0
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "bff",
+    "payload": {
+     "name": "pm2_restarts",
+     "value": 8,
+     "unit": "count",
+     "threshold": 0
+    }
+   }
+  ]
+ },
+ {
+  "id": "probe-thundering-herd",
+  "tags": [
+   "probe"
+  ],
+  "service": "sessions",
+  "severity": "high",
+  "title": "Session lookups slow",
+  "summary": "Held-out case: Session lookups slow",
+  "expected_root_cause": "cache_stampede",
+  "gold_evidence": [
+   1,
+   2,
+   3
+  ],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "sessions",
+    "payload": {
+     "level": "WARN",
+     "code": "CACHE",
+     "message": "thundering herd on key session:*",
+     "request_id": "req-cache"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "sessions",
+    "payload": {
+     "name": "cache_hit_rate",
+     "value": 0.2,
+     "unit": "ratio",
+     "threshold": 0.9
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "sessions",
+    "payload": {
+     "name": "mysql_global_status_queries_rate",
+     "value": 4000,
+     "unit": "requests/s",
+     "threshold": 800
+    }
+   }
+  ]
+ },
+ {
+  "id": "probe-transient-timeout-noise",
+  "tags": [
+   "probe",
+   "noise_only"
+  ],
+  "service": "web",
+  "severity": "high",
+  "title": "One transient timeout",
+  "summary": "Held-out case: One transient timeout",
+  "expected_root_cause": "unknown",
+  "gold_evidence": [],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "web",
+    "payload": {
+     "level": "WARN",
+     "code": "TIMEOUT",
+     "message": "request timed out once, retry succeeded",
+     "request_id": "req-timeout"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "web",
+    "payload": {
+     "name": "request_p95_ms",
+     "value": 180,
+     "unit": "ms",
+     "threshold": 500
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "web",
+    "payload": {
+     "name": "http_5xx_rate",
+     "value": 0.001,
+     "unit": "ratio",
+     "threshold": 0.02
+    }
+   }
+  ]
+ },
+ {
+  "id": "probe-django-relation-missing",
+  "tags": [
+   "probe"
+  ],
+  "service": "app",
+  "severity": "high",
+  "title": "New feature page erroring",
+  "summary": "Held-out case: New feature page erroring",
+  "expected_root_cause": "database_schema_mismatch",
+  "gold_evidence": [
+   1,
+   3
+  ],
+  "telemetry": [
+   {
+    "kind": "log",
+    "service": "app",
+    "payload": {
+     "level": "ERROR",
+     "code": "ProgrammingError",
+     "message": "django.db.utils.ProgrammingError: relation \"app_feature\" does not exist",
+     "request_id": "req-programm"
+    }
+   },
+   {
+    "kind": "deployment",
+    "service": "app",
+    "payload": {
+     "version": "app-3.4.0",
+     "commit": "c0ffee1",
+     "changes": "Release 3.4.0 - ship feature flags page",
+     "deployed_at": "2026-11-21T09:00:00Z"
+    }
+   },
+   {
+    "kind": "metric",
+    "service": "app",
+    "payload": {
+     "name": "db_error_rate",
+     "value": 0.3,
+     "unit": "ratio",
+     "threshold": 0.01
+    }
+   }
+  ]
+ }
+]

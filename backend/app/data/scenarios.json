@@ -1,0 +1,91 @@
+[
+  {
+    "id": "payment-pool-exhaustion",
+    "title": "Checkout failures: payment database pool exhausted",
+    "service": "payments",
+    "severity": "critical",
+    "summary": "Checkout requests are failing because payment workers cannot acquire database connections.",
+    "expected_root_cause": "database_connection_pool_exhaustion",
+    "expected_label": "Database connection pool exhaustion",
+    "telemetry": [
+      {"kind":"metric","service":"payments","payload":{"name":"http_5xx_rate","value":0.35,"unit":"ratio","threshold":0.05,"window":"5m"}},
+      {"kind":"metric","service":"payments","payload":{"name":"db_pool_utilization","value":1.0,"unit":"ratio","threshold":0.85,"window":"5m"}},
+      {"kind":"metric","service":"payments","payload":{"name":"request_p95_ms","value":2840,"unit":"ms","threshold":500,"window":"5m"}},
+      {"kind":"log","service":"payments","payload":{"level":"ERROR","code":"DB_POOL_TIMEOUT","message":"Timed out waiting to acquire a database connection","request_id":"req-pay-1042"}},
+      {"kind":"log","service":"payments","payload":{"level":"ERROR","code":"CHECKOUT_FAILED","message":"Payment authorization failed before transaction could begin","request_id":"req-pay-1043"}},
+      {"kind":"trace","service":"payments","payload":{"trace_id":"tr-pay-001","span_id":"sp-001","operation":"POST /checkout","duration_ms":2921,"status":"ERROR","attributes":{"http.status_code":503}}},
+      {"kind":"trace","service":"payments","payload":{"trace_id":"tr-pay-001","span_id":"sp-002","parent_span_id":"sp-001","operation":"db.acquire_connection","duration_ms":2204,"status":"ERROR","attributes":{"db.pool.wait_ms":2204}}},
+      {"kind":"deployment","service":"payments","payload":{"version":"payments-2.4.1","commit":"a81f2d7","changes":"Reduced max database pool size from 20 to 4 during worker tuning","deployed_at":"2026-11-20T12:18:00Z"}}
+    ]
+  },
+  {
+    "id": "inventory-dependency-latency",
+    "title": "Order latency: supplier inventory dependency is slow",
+    "service": "orders",
+    "severity": "high",
+    "summary": "Order placement is slow because the inventory service is waiting on a degraded supplier dependency.",
+    "expected_root_cause": "downstream_dependency_latency",
+    "expected_label": "Downstream dependency latency",
+    "telemetry": [
+      {"kind":"metric","service":"orders","payload":{"name":"request_p95_ms","value":3210,"unit":"ms","threshold":700,"window":"10m"}},
+      {"kind":"metric","service":"inventory","payload":{"name":"supplier_api_p95_ms","value":2750,"unit":"ms","threshold":400,"window":"10m"}},
+      {"kind":"metric","service":"inventory","payload":{"name":"dependency_error_rate","value":0.18,"unit":"ratio","threshold":0.03,"window":"10m"}},
+      {"kind":"log","service":"orders","payload":{"level":"WARN","code":"DEPENDENCY_TIMEOUT","message":"Inventory lookup exceeded the 2.5s request budget","request_id":"req-ord-2201"}},
+      {"kind":"log","service":"inventory","payload":{"level":"ERROR","code":"SUPPLIER_GATEWAY_TIMEOUT","message":"Supplier API did not respond before client timeout","request_id":"req-inv-992"}},
+      {"kind":"trace","service":"orders","payload":{"trace_id":"tr-ord-020","span_id":"sp-020","operation":"POST /orders","duration_ms":3340,"status":"ERROR","attributes":{}}},
+      {"kind":"trace","service":"inventory","payload":{"trace_id":"tr-ord-020","span_id":"sp-021","parent_span_id":"sp-020","operation":"HTTP supplier.example/stock","duration_ms":2780,"status":"ERROR","attributes":{"peer.service":"supplier-api"}}}
+    ]
+  },
+  {
+    "id": "orders-schema-mismatch",
+    "title": "Order creation failures after schema deployment",
+    "service": "orders",
+    "severity": "critical",
+    "summary": "Order writes fail after a deployment introduced an application/database schema mismatch.",
+    "expected_root_cause": "database_schema_mismatch",
+    "expected_label": "Application/database schema mismatch",
+    "telemetry": [
+      {"kind":"metric","service":"orders","payload":{"name":"http_5xx_rate","value":0.27,"unit":"ratio","threshold":0.05,"window":"5m"}},
+      {"kind":"metric","service":"orders","payload":{"name":"db_write_error_rate","value":0.24,"unit":"ratio","threshold":0.01,"window":"5m"}},
+      {"kind":"log","service":"orders","payload":{"level":"ERROR","code":"SCHEMA_MISMATCH","message":"Column delivery_instructions does not exist in orders table","request_id":"req-ord-3301"}},
+      {"kind":"log","service":"orders","payload":{"level":"ERROR","code":"ORDER_INSERT_FAILED","message":"Insert rejected because expected column is missing","request_id":"req-ord-3302"}},
+      {"kind":"trace","service":"orders","payload":{"trace_id":"tr-ord-033","span_id":"sp-033","operation":"db.insert_order","duration_ms":41,"status":"ERROR","attributes":{"db.system":"postgresql"}}},
+      {"kind":"deployment","service":"orders","payload":{"version":"orders-1.18.0","commit":"b90e6cc","changes":"Application now writes delivery_instructions; database migration was not applied","deployed_at":"2026-11-20T12:40:00Z"}}
+    ]
+  },
+  {
+    "id": "catalog-cache-stampede",
+    "title": "Catalog latency: cache stampede increases database load",
+    "service": "catalog",
+    "severity": "medium",
+    "summary": "A sudden cache miss surge is pushing excess traffic to the catalog database.",
+    "expected_root_cause": "cache_stampede",
+    "expected_label": "Cache stampede",
+    "telemetry": [
+      {"kind":"metric","service":"catalog","payload":{"name":"cache_hit_rate","value":0.08,"unit":"ratio","threshold":0.75,"window":"10m"}},
+      {"kind":"metric","service":"catalog","payload":{"name":"database_qps","value":1850,"unit":"requests/s","threshold":500,"window":"10m"}},
+      {"kind":"metric","service":"catalog","payload":{"name":"request_p95_ms","value":1640,"unit":"ms","threshold":450,"window":"10m"}},
+      {"kind":"log","service":"catalog","payload":{"level":"WARN","code":"CACHE_MISS_SURGE","message":"Cache miss rate increased sharply for popular product keys","request_id":"req-cat-510"}},
+      {"kind":"log","service":"catalog","payload":{"level":"WARN","code":"DB_QUERY_PRESSURE","message":"Database read concurrency above normal operating range","request_id":"req-cat-511"}},
+      {"kind":"trace","service":"catalog","payload":{"trace_id":"tr-cat-050","span_id":"sp-050","operation":"GET /products/popular","duration_ms":1690,"status":"OK","attributes":{}}},
+      {"kind":"trace","service":"catalog","payload":{"trace_id":"tr-cat-050","span_id":"sp-051","parent_span_id":"sp-050","operation":"db.select_products","duration_ms":1410,"status":"OK","attributes":{"db.rows":100}}}
+    ]
+  },
+  {
+    "id": "auth-memory-pressure",
+    "title": "Authentication instability: memory pressure and worker restarts",
+    "service": "auth",
+    "severity": "high",
+    "summary": "Authentication requests intermittently fail as worker memory approaches its container limit.",
+    "expected_root_cause": "memory_pressure",
+    "expected_label": "Application memory pressure",
+    "telemetry": [
+      {"kind":"metric","service":"auth","payload":{"name":"memory_utilization","value":0.97,"unit":"ratio","threshold":0.85,"window":"5m"}},
+      {"kind":"metric","service":"auth","payload":{"name":"container_restart_rate","value":4,"unit":"restarts/10m","threshold":0,"window":"10m"}},
+      {"kind":"metric","service":"auth","payload":{"name":"http_5xx_rate","value":0.12,"unit":"ratio","threshold":0.03,"window":"5m"}},
+      {"kind":"log","service":"auth","payload":{"level":"ERROR","code":"WORKER_OOM_RESTART","message":"Worker terminated after exceeding memory limit","request_id":"req-auth-801"}},
+      {"kind":"log","service":"auth","payload":{"level":"WARN","code":"HEAP_GROWTH","message":"Request cache retained objects beyond expected lifetime","request_id":"req-auth-802"}},
+      {"kind":"trace","service":"auth","payload":{"trace_id":"tr-auth-080","span_id":"sp-080","operation":"POST /token","duration_ms":1900,"status":"ERROR","attributes":{"worker.restart":true}}}
+    ]
+  }
+]

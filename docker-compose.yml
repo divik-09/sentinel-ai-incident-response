@@ -1,0 +1,29 @@
+# Quick demo:        docker compose up --build            (development mode, auth OFF — loopback only)
+# Production-like:   SENTINEL_ENV=production SENTINEL_API_KEYS=<name:role:sha256,...> docker compose up --build
+#                    (refuses to start without keys; demo endpoints and /docs are disabled)
+services:
+  sentinel:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      SENTINEL_ENV: ${SENTINEL_ENV:-development}
+      SENTINEL_API_KEYS: ${SENTINEL_API_KEYS:-}
+      SENTINEL_DATABASE_PATH: /data/sentinel.db
+      SENTINEL_CORS_ORIGINS: ${SENTINEL_CORS_ORIGINS:-http://localhost:8000}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      SENTINEL_ENABLE_MODEL_SYNTHESIS: ${SENTINEL_ENABLE_MODEL_SYNTHESIS:-false}
+      SENTINEL_ENABLE_LLM_AGENT: ${SENTINEL_ENABLE_LLM_AGENT:-false}
+    volumes:
+      - sentinel-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  sentinel-data:

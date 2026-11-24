@@ -1,0 +1,47 @@
+[
+  {
+    "id":"rb-db-pool",
+    "title":"Database connection pool exhaustion",
+    "tags":["database","pool","timeout","connection","payments"],
+    "symptoms":["connection acquisition timeout","pool utilization near 100%","requests waiting on db.acquire_connection"],
+    "steps":["Compare active connections with the configured pool size and database connection limit.","Correlate the first error with recent pool-size, worker-count, or connection-lifecycle changes.","Check for leaked connections and long-running transactions before increasing capacity.","Test a conservative pool-size adjustment under representative concurrency."],
+    "safe_actions":["propose_pool_size_adjustment","inspect_connection_leaks"],
+    "rollback":"Restore the previous pool configuration and restart only the affected worker group."
+  },
+  {
+    "id":"rb-dependency-latency",
+    "title":"Slow downstream dependency",
+    "tags":["dependency","supplier","latency","timeout","inventory","network"],
+    "symptoms":["downstream span dominates end-to-end latency","gateway timeout logs","dependency p95 above service objective"],
+    "steps":["Compare downstream latency with the caller's request budget.","Check provider status, regional routing, and recent dependency configuration changes.","Verify timeout, retry, and circuit-breaker settings to prevent retry amplification.","Use a bounded timeout and a tested fallback where business semantics permit."],
+    "safe_actions":["propose_dependency_timeout_and_circuit_breaker"],
+    "rollback":"Restore the previous timeout and circuit-breaker settings."
+  },
+  {
+    "id":"rb-schema",
+    "title":"Application/database schema mismatch",
+    "tags":["database","schema","migration","deployment","orders"],
+    "symptoms":["missing column or constraint error","write failures begin after deployment","application expects a schema change not present in database"],
+    "steps":["Compare the deployed application version with the database migration ledger.","Confirm whether the required migration is backward-compatible and safe to run.","Prefer an expand-and-contract migration sequence for production schema changes.","Validate the migration against a production-like snapshot before rollout."],
+    "safe_actions":["propose_missing_migration"],
+    "rollback":"Roll back the application to the last schema-compatible version; do not drop data-bearing columns."
+  },
+  {
+    "id":"rb-cache-stampede",
+    "title":"Cache stampede and database read pressure",
+    "tags":["cache","cache miss","stampede","database","catalog"],
+    "symptoms":["cache hit ratio collapses","database query rate spikes","many concurrent misses for the same key"],
+    "steps":["Identify hot keys and determine whether expiration is synchronized.","Check cache eviction, TTL changes, and cache-node health.","Use request coalescing, jittered TTLs, and bounded stale-while-revalidate where safe.","Load-test the cache policy and verify database query rate returns to baseline."],
+    "safe_actions":["propose_cache_ttl_jitter"],
+    "rollback":"Restore the previous TTL and disable the new cache-coalescing policy if error rates increase."
+  },
+  {
+    "id":"rb-memory",
+    "title":"Memory pressure and worker restarts",
+    "tags":["memory","heap","oom","restart","auth"],
+    "symptoms":["memory utilization near container limit","worker OOM restarts","heap growth over time"],
+    "steps":["Compare heap and resident-set memory across worker restarts.","Capture a heap profile in a safe staging environment.","Inspect caches, retained references, and unbounded queues.","Apply a bounded-cache or lifecycle fix and validate with a soak test."],
+    "safe_actions":["propose_memory_retention_investigation"],
+    "rollback":"Revert the application change and restore the previously validated resource limit."
+  }
+]
